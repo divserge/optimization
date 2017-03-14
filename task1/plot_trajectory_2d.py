@@ -18,7 +18,6 @@ def plot_levels(func, xrange=None, yrange=None, levels=None):
         yrange = [-5, 5]
     if levels is None:
         levels = [0, 0.25, 1, 4, 9, 16, 25]
-        
     x = np.linspace(xrange[0], xrange[1], 100)
     y = np.linspace(yrange[0], yrange[1], 100)
     X, Y = np.meshgrid(x, y)
@@ -28,10 +27,9 @@ def plot_levels(func, xrange=None, yrange=None, levels=None):
             Z[i, j] = func(np.array([X[i, j], Y[i, j]]))
 
     CS = plt.contour(X, Y, Z, levels=levels, colors='k', linewidth=4.0)
-    plt.clabel(CS, inline=1, fontsize=8) 
-    plt.grid()              
+    plt.clabel(CS, inline=1, fontsize=8)
+    plt.grid()
 
-        
 def plot_trajectory(func, history, fit_axis=False, label=None):
     """
     Plotting the trajectory of a method. 

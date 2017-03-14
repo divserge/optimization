@@ -18,13 +18,13 @@ class BaseSmoothOracle(object):
         Computes the gradient at point x.
         """
         raise NotImplementedError('Grad oracle is not implemented.')
-    
+
     def hess(self, x):
         """
         Computes the Hessian matrix at point x.
         """
         raise NotImplementedError('Hessian oracle is not implemented.')
-    
+
     def func_directional(self, x, d, alpha):
         """
         Computes phi(alpha) = f(x + alpha*d).
@@ -57,7 +57,7 @@ class QuadraticOracle(BaseSmoothOracle):
         return self.A.dot(x) - self.b
 
     def hess(self, x):
-        return self.A 
+        return self.A
 
 
 class LogRegL2Oracle(BaseSmoothOracle):
@@ -87,15 +87,19 @@ class LogRegL2Oracle(BaseSmoothOracle):
 
     def func(self, x):
         # TODO: Implement
-        return None
+        return (1.0/self.b.shape[0]) * np.ones(self.b.shape).dot(np.logaddexp(np.zeros(self.b.shape), -1 * self.b * self.matvec_Ax(x))) + \
+                                                            0.5 * self.regcoef * x.dot(x)
 
     def grad(self, x):
         # TODO: Implement
-        return None
+        return (-1.0/self.b.shape[0]) * self.matvec_ATx(scipy.special.expit(-1 * self.b * self.matvec_Ax(x)) * self.b) + self.regcoef * x
 
     def hess(self, x):
         # TODO: Implement
-        return None
+        Ax = self.matvec_Ax(x)
+        return (1.0/self.b.shape[0]) * self.matmat_ATsA(scipy.special.expit(Ax * self.b) *
+                                       scipy.special.expit(-Ax * self.b)) + \
+                                       self.regcoef * np.identity(x.shape[0])
 
 
 class LogRegL2OptimizedOracle(LogRegL2Oracle):
@@ -122,12 +126,18 @@ def create_log_reg_oracle(A, b, regcoef, oracle_type='usual'):
     Auxiliary function for creating logistic regression oracles.
         `oracle_type` must be either 'usual' or 'optimized'
     """
-    matvec_Ax = lambda x: x  # TODO: Implement
-    matvec_ATx = lambda x: x  # TODO: Implement
+    def matvec_Ax(x):
+        return A.dot(x)
+
+    def matvec_ATx(x):
+        return A.T.dot(x)
 
     def matmat_ATsA(s):
-        # TODO: Implement
-        return None
+        if isinstance(A, scipy.sparse.csr_matrix):
+            B = A.toarray()
+            return B.T.dot(B * s.reshape(-1, 1))
+        else:
+            return A.T.dot(A * s.reshape(-1, 1))
 
     if oracle_type == 'usual':
         oracle = LogRegL2Oracle
@@ -138,7 +148,6 @@ def create_log_reg_oracle(A, b, regcoef, oracle_type='usual'):
     return oracle(matvec_Ax, matvec_ATx, matmat_ATsA, b, regcoef)
 
 
-
 def grad_finite_diff(func, x, eps=1e-8):
     """
     Returns approximation of the gradient using finite differences:
@@ -147,20 +156,23 @@ def grad_finite_diff(func, x, eps=1e-8):
         e_i = (0, 0, ..., 0, 1, 0, ..., 0)
                           >> i <<
     """
+    result = np.zeros(x.shape)
+    basis = np.eye(x.shape[0], x.shape[0])
+    f = func(x)
+    for i in range(x.shape[0]):
+        result[i] = (func(x + eps * basis[i]) - f) / eps
+
     # TODO: Implement numerical estimation of the gradient
-    return None
+    return result
 
 
 def hess_finite_diff(func, x, eps=1e-5):
-    """
-    Returns approximation of the Hessian using finite differences:
-        result_{ij} := (f(x + eps * e_i + eps * e_j)
-                               - f(x + eps * e_i) 
-                               - f(x + eps * e_j)
-                               + f(x)) / eps^2,
-        where e_i are coordinate vectors:
-        e_i = (0, 0, ..., 0, 1, 0, ..., 0)
-                          >> i <<
-    """
+    result = np.zeros((x.shape[0], x.shape[0]))
+    basis = np.eye(x.shape[0], x.shape[0])
+    f = func(x)
+    for i in range(x.shape[0]):
+        for j in range(x.shape[0]):
+            result[i][j] = (func(x + eps * basis[j] + eps * basis[i]) -
+                            func(x + eps * basis[j]) - func(x + eps * basis[i]) + f)/(eps**2)
     # TODO: Implement numerical estimation of the Hessian
-    return None
+    return result
